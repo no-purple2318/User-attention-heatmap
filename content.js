@@ -1,11 +1,22 @@
-const CELL_SIZE = 50;
-let heatmap = {};
-let maxValue = 0;
+//config 
 
-// --- state ---
+const RADIUS = 30;              // radius of attention circle (px)
+const POSITION_STEP = 10;       // quantization step (px)
+const RENDER_INTERVAL = 200;    // ms
+const TIME_INTERVAL = 100;      // ms
+
+//state
+
 let enabled = false;
 
-// --- canvas setup ---
+let heatmap = {};               // { "x,y": accumulated_time_ms }
+let maxValue = 0;
+
+let currentPointKey = null;
+let lastTime = null;
+
+//CANVAS SETUP
+
 const canvas = document.createElement("canvas");
 const ctx = canvas.getContext("2d");
 
@@ -27,30 +38,47 @@ resizeCanvas();
 window.addEventListener("resize", resizeCanvas);
 window.addEventListener("scroll", resizeCanvas);
 
-// --- draw attention ---
+
+//MOUSE TRACKING (STATE ONLY)
+
 document.addEventListener("mousemove", (e) => {
   if (!enabled) return;
 
-  const x = Math.floor(e.pageX / CELL_SIZE);
-  const y = Math.floor(e.pageY / CELL_SIZE);
-  const key = `${x},${y}`;
+  // Quantize position to reduce key explosion
+  const x = Math.round(e.pageX / POSITION_STEP) * POSITION_STEP;
+  const y = Math.round(e.pageY / POSITION_STEP) * POSITION_STEP;
 
-  heatmap[key] = (heatmap[key] || 0) + 1;
-  maxValue = Math.max(maxValue, heatmap[key]);
+  currentPointKey = `${x},${y}`;
 });
 
+//TIME-WEIGHTED ATTENTION LOOP
 
+setInterval(() => {
+  if (!enabled || !currentPointKey) return;
 
-// --- message listener ---
-chrome.runtime.onMessage.addListener((message) => {
-  if (message.type === "TOGGLE_HEATMAP") {
-    enabled = !enabled;
-    canvas.style.display = enabled ? "block" : "none";
+  const now = Date.now();
+
+  if (lastTime === null) {
+    lastTime = now;
+    return;
   }
-});
+
+  const delta = now - lastTime;
+
+  heatmap[currentPointKey] =
+    (heatmap[currentPointKey] || 0) + delta;
+
+  maxValue = Math.max(maxValue, heatmap[currentPointKey]);
+
+  lastTime = now;
+}, TIME_INTERVAL);
+
+// HEATMAP RENDERING (CIRCULAR)
 
 function renderHeatmap() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  if (maxValue === 0) return;
 
   for (const key in heatmap) {
     const [x, y] = key.split(",").map(Number);
@@ -58,28 +86,34 @@ function renderHeatmap() {
 
     const intensity = value / maxValue;
 
-    const radius = CELL_SIZE;
-    const cx = x * CELL_SIZE + CELL_SIZE / 2;
-    const cy = y * CELL_SIZE + CELL_SIZE / 2;
-
     const gradient = ctx.createRadialGradient(
-      cx, cy, 0,
-      cx, cy, radius
+      x, y, 0,
+      x, y, RADIUS
     );
 
-    gradient.addColorStop(0, `rgba(255,0,0,${intensity})`);
-    gradient.addColorStop(1, "rgba(255,0,0,0)");
+    gradient.addColorStop(0, `rgba(255, 0, 0, ${intensity})`);
+    gradient.addColorStop(1, "rgba(255, 0, 0, 0)");
 
     ctx.fillStyle = gradient;
-    ctx.fillRect(
-      x * CELL_SIZE,
-      y * CELL_SIZE,
-      CELL_SIZE,
-      CELL_SIZE
-    );
+    ctx.beginPath();
+    ctx.arc(x, y, RADIUS, 0, Math.PI * 2);
+    ctx.fill();
   }
 }
 
 setInterval(() => {
   if (enabled) renderHeatmap();
-}, 200);
+}, RENDER_INTERVAL);
+
+//* EXTENSION MESSAGE HANDLER
+chrome.runtime.onMessage.addListener((message) => {
+  if (message.type === "TOGGLE_HEATMAP") {
+    enabled = !enabled;
+    canvas.style.display = enabled ? "block" : "none";
+
+    if (!enabled) {
+      currentPointKey = null;
+      lastTime = null;
+    }
+  }
+});
