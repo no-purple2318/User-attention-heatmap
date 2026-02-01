@@ -1,0 +1,22 @@
+{
+  "manifest_version": 3,
+  "name": "Attention Tracker",
+  "version": "1.0",
+  "description": "Tracks mouse and gaze attention and exposes it to a dashboard",
+  "permissions": ["storage", "activeTab"],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js", "gaze_processor.js"]
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["page_camera.js"],
+      "matches": ["<all_urls>"]
+    }
+  ]
+}
