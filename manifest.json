@@ -1,21 +1,43 @@
-    {
+{
   "manifest_version": 3,
-  "name": "Attention Heatmap ",
+  "name": "Head Tracker Data Collector",
   "version": "1.0",
-  "description": "Tracks user attention and overlays a heatmap on any webpage",
-
-  "permissions": ["activeTab", "scripting"],
-
-  "host_permissions": ["<all_urls>"],
-
-  "action": {
-    "default_popup": "popup.html"
+  "description": "Collects head, mouse, and scroll data.",
+  "permissions": [
+    "activeTab",
+    "storage",
+    "scripting"
+  ],
+  "host_permissions": [
+    "*://localhost/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
   },
-
   "content_scripts": [
     {
-      "matches": ["<all_urls>"],
-      "js": ["content.js"]
+      "matches": [
+        "http://*/*",
+        "https://*/*"
+      ],
+      "js": [
+        "content.js"
+      ]
     }
-  ]
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "page_camera.js",
+        "gaze.js",
+        "face_mesh.js"
+      ],
+      "matches": [
+        "<all_urls>"
+      ]
+    }
+  ],
+  "action": {
+    "default_popup": "popup.html"
+  }
 }

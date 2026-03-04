@@ -1,10 +1,38 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <link rel="stylesheet" href="popup.css" />
+  <style>
+    body { font-family: sans-serif; padding: 15px; width: 280px; }
+    input, select, button { width: 100%; margin-bottom: 10px; padding: 8px; box-sizing: border-box; }
+    #auth-view { display: block; }
+    #track-view { display: none; }
+    .status { font-weight: bold; margin-bottom: 15px;color:#333; }
+    button.primary { background: #0070f3; color: white; border: none; cursor: pointer; border-radius: 4px; }
+    button.danger { background: #ff4040; color: white; border: none; cursor: pointer; border-radius: 4px; }
+  </style>
 </head>
 <body>
-  <button id="toggle">Toggle Heatmap</button>
+  <h3>Heatmap Tracker</h3>
+  
+  <div id="auth-view">
+    <input type="email" id="email" placeholder="Email" />
+    <input type="password" id="password" placeholder="Password" />
+    <select id="role">
+      <option value="USER">User</option>
+      <option value="CORPORATE">Corporate</option>
+    </select>
+    <button class="primary" id="login-btn">Login / Register</button>
+  </div>
+
+  <div id="track-view">
+    <div class="status" id="status-text">Ready</div>
+    <label><input type="checkbox" id="track-mouse" checked /> Mouse Tracking</label><br/>
+    <label><input type="checkbox" id="track-scroll" checked /> Scroll Tracking</label><br/>
+    <label><input type="checkbox" id="track-eye" checked /> Eye Tracking</label><br/><br/>
+    <button class="primary" id="toggle-record">Start Recording</button>
+    <button class="danger" id="logout-btn" style="margin-top:10px;">Logout</button>
+  </div>
+
   <script src="popup.js"></script>
 </body>
 </html>

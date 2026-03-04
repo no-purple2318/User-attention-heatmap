@@ -1,0 +1,19 @@
+{
+  "manifest_version": 3,
+  "name": "Face & Eye Tracker",
+  "version": "1.0",
+  "description": "Shows eye landmarks using MediaPipe FaceMesh",
+  "permissions": ["activeTab"],
+  "content_scripts": [
+    {
+      "matches": ["http://*/*", "https://*/*"],
+      "js": ["content.js"]
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["page_camera.js", "face_mesh.js"],
+      "matches": ["<all_urls>"]
+    }
+  ]
+}
