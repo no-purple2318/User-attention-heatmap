@@ -26,25 +26,27 @@ mp.onload = () => {
   });
 
   faceMesh.onResults((res) => {
-  if (!res.multiFaceLandmarks || res.multiFaceLandmarks.length === 0) {
-    return;
-  }
+    if (!res.multiFaceLandmarks || res.multiFaceLandmarks.length === 0) {
+      return;
+    }
 
-  const lm = res.multiFaceLandmarks[0];
+    const lm = res.multiFaceLandmarks[0];
 
-  // Guard: nose landmark must exist
-  if (!lm || !lm[1]) {
-    return;
-  }
+    // Guard: nose landmark must exist
+    if (!lm || !lm[1]) {
+      return;
+    }
 
-  const nose = lm[1];
+    const nose = lm[1];
 
-  window.__HEAD__ = {
-    x: nose.x,
-    y: nose.y,
-    t: Date.now()
-  };
-});
+    // Broadcast gaze data via postMessage so content.js (isolated world) can receive it
+    window.postMessage({
+      type: "GAZE_DATA",
+      x: nose.x,
+      y: nose.y,
+      t: Date.now()
+    }, "*");
+  });
 
 
   async function loop() {

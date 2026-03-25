@@ -1,43 +1,40 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
 
 export async function POST(req: Request) {
     try {
-        const { email, password, role } = await req.json();
+        const payload = await req.json();
 
-        if (!email || !password) {
-            return NextResponse.json(
-                { error: "Email and password are required" },
-                { status: 400 }
-            );
-        }
-
-        // For demonstration, we'll auto-register the user if they don't exist
-        // In a real app, you'd verify the password hash
-        let user = await prisma.user.findUnique({
-            where: { email },
+        // Proxy login request to new NestJS backend
+        const nestRes = await fetch("http://localhost:3001/auth/login", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
         });
 
-        if (!user) {
-            user = await prisma.user.create({
-                data: {
-                    email,
-                    passwordHash: "dummy-hash", // REPLACE WITH REAL HASHING in production
-                    role: role || "USER",
-                },
-            });
+        const data = await nestRes.json();
+
+        if (!nestRes.ok) {
+            return NextResponse.json({ error: data.message || "Login failed via backend" }, { status: nestRes.status });
         }
 
-        // Usually you'd use a real JWT library here (e.g. jose or jsonwebtoken)
-        // For simplicity of this extension demo, returning the user document base64
-        const token = Buffer.from(JSON.stringify(user)).toString('base64');
+        const { user } = data;
+        const response = NextResponse.json({ user, message: "Logged in successfully" });
 
-        return NextResponse.json({ token, user, message: "Logged in successfully" });
+        // Retain Next.js session cookie functionality for the dashboard UI
+        response.cookies.set("dashboard_user", JSON.stringify({ id: user.id, email: user.email, role: user.role }), {
+            httpOnly: true,
+            path: "/",
+            maxAge: 60 * 60 * 24 * 7, // 1 week
+            sameSite: "lax",
+        });
+
+        return response;
     } catch (error) {
-        console.error("Login Route Error:", error);
+        console.error("Login Proxy Route Error:", error);
         return NextResponse.json(
-            { error: "Internal Server Error" },
+            { error: "Internal Server Error (Backend Unreachable)" },
             { status: 500 }
         );
     }
 }
+

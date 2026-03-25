@@ -2,6 +2,8 @@ import { prisma } from "@/lib/prisma";
 import Replayer from "./Replayer";
 import { notFound } from "next/navigation";
 
+export const dynamic = "force-dynamic";
+
 export default async function ReplayPage(props: { params: Promise<{ id: string }> }) {
     const params = await props.params;
     const session = await prisma.session.findUnique({

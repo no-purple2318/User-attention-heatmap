@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Eye Tracking Calibration</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: #0f172a;
+            color: white;
+            font-family: sans-serif;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+        }
+
+        #instructions {
+            text-align: center;
+            max-width: 600px;
+            z-index: 10;
+            background: rgba(30, 41, 59, 0.8);
+            padding: 30px;
+            border-radius: 12px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+        }
+
+        h1 {
+            color: #3b82f6;
+        }
+
+        .start-btn {
+            background: #3b82f6;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            font-size: 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            margin-top: 20px;
+            transition: background 0.2s;
+        }
+
+        .start-btn:hover {
+            background: #2563eb;
+        }
+
+        .point {
+            position: absolute;
+            width: 30px;
+            height: 30px;
+            background: #ef4444;
+            border-radius: 50%;
+            cursor: pointer;
+            display: none;
+            transform: translate(-50%, -50%);
+            box-shadow: 0 0 20px rgba(239, 68, 68, 0.6);
+            transition: transform 0.1s;
+        }
+
+        .point:active {
+            transform: translate(-50%, -50%) scale(0.9);
+        }
+
+        .point::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 10px;
+            height: 10px;
+            background: white;
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+        }
+
+        #pt-1 {
+            top: 10%;
+            left: 10%;
+        }
+
+        #pt-2 {
+            top: 10%;
+            left: 90%;
+        }
+
+        #pt-3 {
+            top: 90%;
+            left: 90%;
+        }
+
+        #pt-4 {
+            top: 90%;
+            left: 10%;
+        }
+
+        #pt-5 {
+            top: 50%;
+            left: 50%;
+        }
+
+        #finish-msg {
+            display: none;
+            text-align: center;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div id="instructions">
+        <h1>Eye Tracking Calibration</h1>
+        <p>For accurate eye tracking, we need to calibrate the model to your screen and seating position.</p>
+        <p><strong>Instructions:</strong></p>
+        <ol style="text-align: left;">
+            <li>Please look directly at the red dots that appear on the screen.</li>
+            <li>Click the dot while keeping your eyes focused on it.</li>
+            <li>Do not move your head excessively.</li>
+        </ol>
+        <button class="start-btn" id="start-btn">Start Calibration</button>
+    </div>
+
+    <div id="finish-msg">
+        <h1 style="color: #10b981;">Calibration Complete!</h1>
+        <p>Your screen offsets have been saved. You can securely close this tab.</p>
+        <button class="start-btn" onclick="window.close()">Close Tab</button>
+    </div>
+
+    <div class="point" id="pt-1"></div>
+    <div class="point" id="pt-2"></div>
+    <div class="point" id="pt-3"></div>
+    <div class="point" id="pt-4"></div>
+    <div class="point" id="pt-5"></div>
+
+    <!-- Load camera and gaze scripts so we can read the raw coordinates during calibration -->
+    <script src="face_mesh.js"></script>
+    <script src="gaze.js"></script>
+    <script src="page_camera.js"></script>
+    <script src="calibration.js"></script>
+</body>
+
+</html>

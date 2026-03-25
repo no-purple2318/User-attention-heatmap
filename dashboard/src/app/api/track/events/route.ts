@@ -1,30 +1,26 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { verifyJwt } from "@/lib/auth";
 
 export async function POST(req: Request) {
     try {
         const { sessionId, events } = await req.json();
 
-        // Since we are mocking JWT, let's grab the token from headers
+        // Verify real JWT from headers
         const authHeader = req.headers.get("authorization");
         if (!authHeader || !authHeader.startsWith("Bearer ")) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
 
         const token = authHeader.split(" ")[1];
-        let user;
-        try {
-            user = JSON.parse(Buffer.from(token, 'base64').toString('ascii'));
-        } catch (e) {
-            return NextResponse.json({ error: "Invalid Token" }, { status: 401 });
-        }
+        const user = await verifyJwt(token);
 
         if (!user || !user.id || !sessionId || !events || !Array.isArray(events)) {
             return NextResponse.json({ error: "Bad Request" }, { status: 400 });
         }
 
         // Format events for Prisma bulk create
-        const data = events.map((ev: any) => ({
+        const data = events.map((ev: Record<string, any>) => ({
             sessionId,
             timestamp: new Date(ev.t || Date.now()),
             type: ev.type, // MOUSE, SCROLL, EYE

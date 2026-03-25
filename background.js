@@ -1,4 +1,4 @@
-const API_BASE = "http://localhost:3000/api";
+const API_BASE = "http://localhost:3001";
 let currentSessionId = null;
 let eventBuffer = [];
 let uploadInterval = null;
@@ -14,17 +14,16 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 });
 
 async function startSession(url) {
-    const { token, isRecording } = await chrome.storage.local.get(["token", "isRecording"]);
-    if (!token || !isRecording) return;
+    const { userId, isRecording } = await chrome.storage.local.get(["userId", "isRecording"]);
+    if (!userId || !isRecording) return;
 
     try {
         const res = await fetch(`${API_BASE}/track/session`, {
             method: "POST",
             headers: {
-                "Content-Type": "application/json",
-                "Authorization": `Bearer ${token}`
+                "Content-Type": "application/json"
             },
-            body: JSON.stringify({ url })
+            body: JSON.stringify({ userId, url })
         });
 
         if (res.ok) {
@@ -60,14 +59,22 @@ async function flushBuffer() {
     eventBuffer = []; // clear buffer early to not miss new events
 
     try {
-        await fetch(`${API_BASE}/track/events`, {
+        const { userId } = await chrome.storage.local.get(["userId"]);
+        const res = await fetch(`${API_BASE}/track/events`, {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: {
+                "Content-Type": "application/json"
+            },
             body: JSON.stringify({
+                userId,
                 sessionId: currentSessionId,
                 events: eventsToSend
             })
         });
+
+        if (!res.ok) {
+            throw new Error(`Server returned ${res.status}`);
+        }
     } catch (e) {
         console.error("Failed to upload events", e);
         // Push them back to the front of the queue if failed

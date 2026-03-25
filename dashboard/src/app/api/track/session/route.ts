@@ -1,21 +1,19 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { verifyJwt } from "@/lib/auth";
 
 export async function POST(req: Request) {
     try {
         const { url } = await req.json();
 
-        // Since we are mocking JWT, let's grab the token from headers
+        // Verify real JWT from headers
         const authHeader = req.headers.get("authorization");
         if (!authHeader || !authHeader.startsWith("Bearer ")) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
 
         const token = authHeader.split(" ")[1];
-
-        // Decode pseudo-token
-        const userStr = Buffer.from(token, 'base64').toString('ascii');
-        const user = JSON.parse(userStr);
+        const user = await verifyJwt(token);
 
         if (!user || !user.id) {
             return NextResponse.json({ error: "Invalid Token" }, { status: 401 });
