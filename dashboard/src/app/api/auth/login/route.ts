@@ -1,40 +1,40 @@
-import { NextResponse } from "next/server";
+import { NextResponse } from 'next/server';
 
 export async function POST(req: Request) {
     try {
-        const payload = await req.json();
+        const { email, password } = await req.json();
 
-        // Proxy login request to new NestJS backend
-        const nestRes = await fetch("http://localhost:3001/auth/login", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(payload)
+        // Proxy request to the NestJS API
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+        const authRes = await fetch(`${apiUrl}/auth/login`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, password }),
         });
 
-        const data = await nestRes.json();
-
-        if (!nestRes.ok) {
-            return NextResponse.json({ error: data.message || "Login failed via backend" }, { status: nestRes.status });
+        if (!authRes.ok) {
+            const errData = await authRes.json();
+            return NextResponse.json({ error: errData.message || 'Login failed' }, { status: authRes.status });
         }
 
-        const { user } = data;
-        const response = NextResponse.json({ user, message: "Logged in successfully" });
+        const data = await authRes.json();
+        if (!data.user) {
+            return NextResponse.json({ error: 'Invalid user' }, { status: 401 });
+        }
 
-        // Retain Next.js session cookie functionality for the dashboard UI
-        response.cookies.set("dashboard_user", JSON.stringify({ id: user.id, email: user.email, role: user.role }), {
+        const res = NextResponse.json({ success: true, user: data.user });
+
+        // Stamp the dashboard_user HTTP-only cookie
+        res.cookies.set('dashboard_user', JSON.stringify(data.user), {
             httpOnly: true,
-            path: "/",
-            maxAge: 60 * 60 * 24 * 7, // 1 week
-            sameSite: "lax",
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'lax',
+            path: '/'
         });
 
-        return response;
+        return res;
     } catch (error) {
-        console.error("Login Proxy Route Error:", error);
-        return NextResponse.json(
-            { error: "Internal Server Error (Backend Unreachable)" },
-            { status: 500 }
-        );
+        console.error('NestJS Proxy Error:', error);
+        return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
     }
 }
-

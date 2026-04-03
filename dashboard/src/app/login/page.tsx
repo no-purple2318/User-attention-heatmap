@@ -1,124 +1,73 @@
-"use client";
-
-import { useState } from "react";
-import { useRouter } from "next/navigation";
-import { Activity, Mail, Lock, LogIn, AlertCircle, Loader2 } from "lucide-react";
+'use client';
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 
 export default function LoginPage() {
-    const [email, setEmail] = useState("");
-    const [password, setPassword] = useState("");
-    const [error, setError] = useState("");
+    const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
+    const [errorMsg, setErrorMsg] = useState('');
     const router = useRouter();
 
-    const handleLogin = async (e: React.FormEvent) => {
+    const handleAuth = async (e: React.FormEvent, endpoint: 'login' | 'register') => {
         e.preventDefault();
-        setError("");
         setLoading(true);
-
+        setErrorMsg('');
         try {
-            const res = await fetch("/api/auth/login", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ email, password }),
+            const res = await fetch(`/api/auth/${endpoint}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, password })
             });
 
-            const data = await res.json();
-
-            if (!res.ok) {
-                setError(data.error || "Login failed. Please try again.");
+            if (res.ok) {
+                router.push('/dashboard');
             } else {
-                router.push("/dashboard");
-                router.refresh();
+                const data = await res.json();
+                setErrorMsg(`${endpoint === 'login' ? 'Login' : 'Registration'} failed: ` + (data.error || 'Invalid credentials'));
             }
-        } catch {
-            setError("Could not reach the server. Is the dashboard running?");
+        } catch (err) {
+            setErrorMsg('Error communicating with proxy route (Backend may be offline)');
         } finally {
             setLoading(false);
         }
     };
 
     return (
-        <div className="min-h-screen bg-[#0f172a] flex items-center justify-center p-6 relative overflow-hidden">
-            {/* Background glow effects */}
-            <div className="absolute top-1/4 left-1/4 w-[400px] h-[400px] bg-blue-600/10 rounded-full blur-[120px] pointer-events-none"></div>
-            <div className="absolute bottom-1/4 right-1/4 w-[300px] h-[300px] bg-indigo-600/10 rounded-full blur-[100px] pointer-events-none"></div>
-
-            <div className="w-full max-w-md relative z-10">
-                {/* Header */}
-                <div className="text-center mb-10">
-                    <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-500/10 border border-blue-500/20 rounded-2xl mb-4">
-                        <Activity className="w-8 h-8 text-blue-400" />
-                    </div>
-                    <h1 className="text-3xl font-bold text-white mb-2">Welcome back</h1>
-                    <p className="text-slate-400">Sign in to view your attention sessions</p>
+        <div className="min-h-screen flex items-center justify-center bg-zinc-950 text-white">
+            <form className="p-8 bg-zinc-900 rounded-xl shadow-2xl flex flex-col gap-4 w-[400px]">
+                <h1 className="text-2xl font-bold">Heatmap Analytics</h1>
+                <p className="text-zinc-400 text-sm">Sign in securely to view user attention heatmaps.</p>
+                <input
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="Enter your email"
+                    className="p-3 bg-zinc-800 rounded outline-none focus:ring-2 focus:ring-emerald-500"
+                    required
+                />
+                <input
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="Enter password"
+                    className="p-3 bg-zinc-800 rounded outline-none focus:ring-2 focus:ring-emerald-500"
+                    required
+                />
+                <div className="flex gap-3 mt-2">
+                    <button onClick={(e) => handleAuth(e, 'login')} disabled={loading} className="flex-1 p-3 bg-emerald-600 border border-emerald-500 hover:bg-emerald-700 rounded font-semibold transition shadow-lg">
+                        {loading ? '...' : 'Log In'}
+                    </button>
+                    <button onClick={(e) => handleAuth(e, 'register')} disabled={loading} className="flex-1 p-3 bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 rounded font-semibold transition shadow-lg text-emerald-400 hover:text-emerald-300">
+                        {loading ? '...' : 'Register'}
+                    </button>
                 </div>
-
-                {/* Card */}
-                <form
-                    onSubmit={handleLogin}
-                    className="bg-slate-900/60 backdrop-blur-xl border border-slate-700/50 rounded-2xl p-8 shadow-2xl"
-                >
-                    <div className="space-y-5">
-                        {/* Email */}
-                        <div>
-                            <label className="block text-sm font-medium text-slate-300 mb-2">Email address</label>
-                            <div className="relative">
-                                <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
-                                <input
-                                    type="email"
-                                    required
-                                    value={email}
-                                    onChange={e => setEmail(e.target.value)}
-                                    placeholder="you@example.com"
-                                    className="w-full bg-slate-800/60 border border-slate-700 text-white placeholder-slate-500 rounded-xl pl-10 pr-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/60 focus:border-blue-500/60 transition-all"
-                                />
-                            </div>
-                        </div>
-
-                        {/* Password */}
-                        <div>
-                            <label className="block text-sm font-medium text-slate-300 mb-2">Password</label>
-                            <div className="relative">
-                                <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
-                                <input
-                                    type="password"
-                                    required
-                                    value={password}
-                                    onChange={e => setPassword(e.target.value)}
-                                    placeholder="••••••••"
-                                    className="w-full bg-slate-800/60 border border-slate-700 text-white placeholder-slate-500 rounded-xl pl-10 pr-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/60 focus:border-blue-500/60 transition-all"
-                                />
-                            </div>
-                        </div>
-
-                        {/* Error */}
-                        {error && (
-                            <div className="flex items-center gap-2.5 text-red-400 bg-red-500/10 border border-red-500/20 rounded-xl p-3.5 text-sm">
-                                <AlertCircle className="w-4 h-4 shrink-0" />
-                                <span>{error}</span>
-                            </div>
-                        )}
-
-                        {/* Submit */}
-                        <button
-                            type="submit"
-                            disabled={loading}
-                            className="w-full flex items-center justify-center gap-2.5 bg-blue-600 hover:bg-blue-500 disabled:opacity-60 disabled:cursor-not-allowed text-white font-semibold py-3 px-4 rounded-xl transition-all active:scale-95 shadow-[0_0_30px_rgba(37,99,235,0.3)] hover:shadow-[0_0_40px_rgba(37,99,235,0.5)]"
-                        >
-                            {loading ? (
-                                <><Loader2 className="w-4 h-4 animate-spin" /> Signing in...</>
-                            ) : (
-                                <><LogIn className="w-4 h-4" /> Sign In</>
-                            )}
-                        </button>
+                {errorMsg && (
+                    <div className="mt-2 p-3 bg-red-950/50 border border-red-500/50 text-red-400 rounded text-sm text-center font-medium animate-pulse">
+                        {errorMsg}
                     </div>
-
-                    <p className="text-center text-slate-500 text-xs mt-6">
-                        No account yet? Just enter your email & any password to auto-register.
-                    </p>
-                </form>
-            </div>
+                )}
+            </form>
         </div>
     );
 }

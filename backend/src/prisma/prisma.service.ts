@@ -1,16 +1,15 @@
-import { Injectable, OnModuleInit } from '@nestjs/common';
+import { Injectable, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
 import { PrismaClient } from '@prisma/client';
-import { PrismaLibSql } from '@prisma/adapter-libsql';
+// In a full production app, you might use @prisma/adapter-pg explicitly if edge deployment requires it.
+// For standard container workloads or VM, the native Prisma Client handles Pg connections via Pool organically.
 
 @Injectable()
-export class PrismaService extends PrismaClient implements OnModuleInit {
-    constructor() {
-        const url = process.env.DATABASE_URL || 'file:./dev.db';
-        const adapter = new PrismaLibSql({ url });
-        super({ adapter });
-    }
-
+export class PrismaService extends PrismaClient implements OnModuleInit, OnModuleDestroy {
     async onModuleInit() {
         await this.$connect();
+    }
+
+    async onModuleDestroy() {
+        await this.$disconnect();
     }
 }

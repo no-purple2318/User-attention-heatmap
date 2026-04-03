@@ -1,89 +1,107 @@
-const API_BASE = "http://localhost:3001";
-let currentSessionId = null;
 let eventBuffer = [];
-let uploadInterval = null;
+let sessionId = null;
+let currentUrl = 'unknown';
 
+// Initialize or reuse session ID per recording session
+async function getOrCreateSessionId() {
+    const data = await chrome.storage.local.get(["sessionId", "user"]);
+    if (!data.user) return null;
+    if (data.sessionId) return data.sessionId;
+
+    const newSessionId = crypto.randomUUID();
+    await chrome.storage.local.set({ sessionId: newSessionId });
+    sessionId = newSessionId;
+    return newSessionId;
+}
+
+// Single message listener
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-    if (message.action === "START_RECORDING") {
-        startSession(sender.tab?.url || "unknown");
-    } else if (message.action === "STOP_RECORDING") {
-        stopSession();
-    } else if (message.action === "RECORD_EVENT") {
-        eventBuffer.push(message.data);
+    if (message.type === "TRACK_EVENT") {
+        // Capture current URL from the content script payload
+        if (message.payload.url) currentUrl = message.payload.url;
+        eventBuffer.push(message.payload);
     }
+
+    if (message.type === "START_TRACKING") {
+        // Clear old session so a fresh one is created for new recording
+        chrome.storage.local.remove("sessionId");
+        sessionId = null;
+        eventBuffer = [];
+    }
+
+    if (message.type === "STOP_TRACKING" || message.type === "LOGOUT") {
+        closeSession();
+    }
+
+    return true;
 });
 
-async function startSession(url) {
-    const { userId, isRecording } = await chrome.storage.local.get(["userId", "isRecording"]);
-    if (!userId || !isRecording) return;
+// Flush to backend every 5s
+setInterval(async () => {
+    if (eventBuffer.length === 0) return;
 
-    try {
-        const res = await fetch(`${API_BASE}/track/session`, {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify({ userId, url })
-        });
-
-        if (res.ok) {
-            const data = await res.json();
-            currentSessionId = data.sessionId;
-            chrome.storage.local.set({ sessionId: currentSessionId });
-
-            // Start ingestion loop
-            if (uploadInterval) clearInterval(uploadInterval);
-            uploadInterval = setInterval(flushBuffer, 5000);
-
-            // Tell content script to begin listening
-            broadcastToTabs({ action: "RESUME_TRACKING" });
-        }
-    } catch (e) {
-        console.error("Failed to start session", e);
+    const data = await chrome.storage.local.get(["user", "token"]);
+    if (!data.user || !data.token) {
+        eventBuffer = [];
+        return;
     }
-}
 
-function stopSession() {
-    chrome.storage.local.remove(["sessionId"]);
-    currentSessionId = null;
-    flushBuffer();
-    if (uploadInterval) clearInterval(uploadInterval);
-    uploadInterval = null;
-    broadcastToTabs({ action: "PAUSE_TRACKING" });
-}
+    const sid = await getOrCreateSessionId();
+    if (!sid) return;
 
-async function flushBuffer() {
-    if (eventBuffer.length === 0 || !currentSessionId) return;
+    const currentBatch = [...eventBuffer];
+    eventBuffer = [];
 
-    const eventsToSend = [...eventBuffer];
-    eventBuffer = []; // clear buffer early to not miss new events
+    // Normalise coordinates to 0..1 range before sending
+    const normalisedBatch = currentBatch.map(ev => ({
+        ...ev,
+        x: typeof ev.x === 'number' ? ev.x / (window?.innerWidth || 1920) : ev.x,
+        y: typeof ev.y === 'number' ? ev.y / (window?.innerHeight || 1080) : ev.y,
+    }));
 
     try {
-        const { userId } = await chrome.storage.local.get(["userId"]);
-        const res = await fetch(`${API_BASE}/track/events`, {
+        const res = await fetch("http://localhost:3001/track/events", {
             method: "POST",
             headers: {
-                "Content-Type": "application/json"
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${data.token}`
             },
             body: JSON.stringify({
-                userId,
-                sessionId: currentSessionId,
-                events: eventsToSend
+                sessionId: sid,
+                url: currentUrl,
+                events: normalisedBatch
             })
         });
 
         if (!res.ok) {
-            throw new Error(`Server returned ${res.status}`);
+            const err = await res.json().catch(() => ({}));
+            console.error("Flush rejected:", err);
+            eventBuffer = [...currentBatch, ...eventBuffer]; // retry
+        } else {
+            console.log(`Flushed ${currentBatch.length} events OK.`);
         }
-    } catch (e) {
-        console.error("Failed to upload events", e);
-        // Push them back to the front of the queue if failed
-        eventBuffer.unshift(...eventsToSend);
+    } catch (error) {
+        console.error("Flush network error:", error);
+        eventBuffer = [...currentBatch, ...eventBuffer];
     }
-}
+}, 5000);
 
-function broadcastToTabs(msg) {
-    chrome.tabs.query({}, tabs => {
-        tabs.forEach(t => chrome.tabs.sendMessage(t.id, msg).catch(() => { }));
-    });
+async function closeSession() {
+    const data = await chrome.storage.local.get(["sessionId", "token"]);
+    if (data.sessionId && data.token) {
+        try {
+            await fetch("http://localhost:3001/track/session/end", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${data.token}`
+                },
+                body: JSON.stringify({ sessionId: data.sessionId })
+            });
+        } catch (e) {
+            console.error("Failed to close session:", e);
+        }
+        await chrome.storage.local.remove("sessionId");
+        sessionId = null;
+    }
 }

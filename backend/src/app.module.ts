@@ -7,4 +7,3 @@ import { TrackModule } from './track/track.module';
   imports: [PrismaModule, AuthModule, TrackModule],
 })
 export class AppModule { }
-

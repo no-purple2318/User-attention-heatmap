@@ -1,43 +1,26 @@
-# User Attention Heatmap - Fullstack Hosting Guide
+# Hosting Guide: Decoupled User Attention Heatmap Platform
 
-This project utilizes a **decoupled architecture**, meaning the Frontend (Next.js) and the Backend API (NestJS) are separate applications that must be deployed independently.
+## Frontend Web Dashboard (Next.js App Router) -> Vercel
+- **Platform**: Vercel
+- **Build Command**: `npm run build`
+- **Output Directory**: `.next`
+- **Environment Variables**:
+  - `DATABASE_URL`: Connection string to PostgreSQL (Read Access).
+  - `NEXT_PUBLIC_API_URL`: The deployed URL of the NestJS backend.
 
-## 1. Database Setup (PostgreSQL)
-We use a real PostgreSQL database with connection pooling for maximum performance.
-1. Sign up for a free managed PostgreSQL provider like [Neon](https://neon.tech) or [Supabase](https://supabase.com).
-2. Grab your connection string (e.g. `postgresql://user:password@host/db`).
-3. Inside your local `backend/.env` file, add:
-   ```env
-   DATABASE_URL="postgresql://user:password@host/db"
-   ```
-4. From the `/backend` folder, sync the database by running: `npx prisma db push`.
+## Backend API Core (NestJS) -> Render
+- **Platform**: Render.com Web Service
+- **Environment**: Node.js
+- **Build Command**: `npm install && npx prisma generate && npm run build`
+- **Start Command**: `npm run start:prod`
+- **Environment Variables**:
+  - `DATABASE_URL`: Read/write connection string for the PostgreSQL database.
+  - `PORT`: Will be automatically assigned by Render (make sure your App listens to `process.env.PORT || 3001`).
 
-## 2. Deploying the Backend (NestJS)
-NestJS is persistent and should be hosted on a container-based platform. We recommend **Render** or **Railway**.
+## Database Engine (PostgreSQL)
+- **Providers**: Supabase, Render Postgres, Neon, or Railway.
+- Connect securely using Prisma `@prisma/adapter-pg`.
 
-### Using Render:
-1. Push your repository to GitHub.
-2. Go to [Render](https://render.com) and create a **New Web Service**.
-3. Connect your GitHub repository.
-4. Set the **Root Directory** to `backend`.
-5. Set the **Build Command** to: `npm install && npx prisma generate && npm run build`
-6. Set the **Start Command** to: `npm run start:prod`
-7. In the **Environment Variables**, add only your `DATABASE_URL`.
-8. Once deployed, Render will provide a URL like `https://heatmap-api.onrender.com`. Keep this URL handy.
-
-## 3. Deploying the Frontend (Next.js)
-The optimal host for Next.js is **Vercel**.
-
-1. Go to [Vercel](https://vercel.com) and import the exact same GitHub repository.
-2. Set the **Root Directory** to `dashboard`.
-3. In the Vercel dashboard for this project, edit the `src/app/api/auth/login/route.ts` file (or set an environment variable if you abstract it) so the `fetch()` request points to your *Render Backend URL* instead of `http://localhost:3001`.
-4. Deploy the project. Vercel will build your React application seamlessly.
-
-## 4. Extension Configuration
-Finally, update your Chrome extension to send data strictly to your new, real NestJS backend.
-In both `popup.js` and `background.js`, update the `API_BASE`:
-```javascript
-// Change this to your deployed Render URL:
-const API_BASE = "https://heatmap-api.onrender.com";
-```
-Reload the extension in Chrome, and data will flow seamlessly from the user's browser, safely through your NestJS endpoints, into your PostgreSQL database, and visibly onto your Next.js dashboard!
+## Important Notes
+- The Extension connects directly to the Backend API. Make sure `background.js` and `popup.js` point to the correct production domain of the NestJS API instead of `localhost:3001`.
+- Update CORS inside the NestJS bootstrap (`main.ts`) to permit requests from the Extension and the Vercel Frontend.

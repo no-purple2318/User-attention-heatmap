@@ -1,0 +1,182 @@
+body {
+  width: 320px;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  margin: 0;
+  background-color: #0f172a;
+  color: #f8fafc;
+}
+
+.container {
+  padding: 20px;
+}
+
+h2 {
+  margin-top: 0;
+  font-size: 20px;
+  color: #818cf8;
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+input {
+  width: 100%;
+  padding: 12px;
+  margin-bottom: 12px;
+  box-sizing: border-box;
+  border: 1px solid #334155;
+  background-color: #1e293b;
+  color: white;
+  border-radius: 8px;
+  outline: none;
+}
+
+input:focus {
+  border-color: #3b82f6;
+}
+
+button {
+  width: 100%;
+  padding: 12px;
+  background: #3b82f6;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 14px;
+  transition: all 0.2s;
+}
+
+button:hover {
+  opacity: 0.9;
+}
+
+button.secondary {
+  background: transparent;
+  border: 1px solid #334155;
+  color: #94a3b8;
+}
+
+button.secondary:hover {
+  background: #1e293b;
+  color: white;
+}
+
+.badge {
+  background: #1e293b;
+  padding: 10px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: #10b981;
+  font-weight: 600;
+  font-size: 14px;
+  margin-bottom: 20px;
+  border: 1px solid #334155;
+}
+
+.badge .dot {
+  width: 10px;
+  height: 10px;
+  background: #10b981;
+  border-radius: 50%;
+}
+
+.setting-card {
+  background: #1e293b;
+  border: 1px solid #334155;
+  padding: 14px 16px;
+  border-radius: 8px;
+  margin-bottom: 12px;
+  display: flex;
+  flex-direction: column;
+}
+
+.setting-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.setting-info h4 {
+  margin: 0 0 4px 0;
+  font-size: 14px;
+  color: #f8fafc;
+}
+
+.setting-info p {
+  margin: 0;
+  font-size: 12px;
+  color: #94a3b8;
+}
+
+/* Custom Toggle Switch */
+.switch {
+  position: relative;
+  display: inline-block;
+  width: 44px;
+  height: 24px;
+  flex-shrink: 0;
+}
+
+.switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: #475569;
+  transition: .3s;
+  border-radius: 24px;
+}
+
+.slider:before {
+  position: absolute;
+  content: "";
+  height: 18px;
+  width: 18px;
+  left: 3px;
+  bottom: 3px;
+  background-color: white;
+  transition: .3s;
+  border-radius: 50%;
+}
+
+input:checked+.slider {
+  background-color: #3b82f6;
+}
+
+input:checked+.slider:before {
+  transform: translateX(20px);
+}
+
+#calibrate-btn {
+  margin-top: 12px;
+  background: transparent;
+  border: 1px solid #3b82f6;
+  color: #3b82f6;
+  padding: 6px;
+  font-size: 12px;
+  width: 130px;
+}
+
+#calibrate-btn:hover {
+  background: rgba(59, 130, 246, 0.1);
+}
+
+#error-msg {
+  color: #ef4444;
+  font-size: 13px;
+  text-align: center;
+  margin-top: 10px;
+  display: none;
+}

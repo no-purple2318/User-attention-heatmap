@@ -1,184 +1,165 @@
-const API_BASE = "http://localhost:3001";
+document.addEventListener("DOMContentLoaded", () => {
+    const emailInput = document.getElementById("email");
+    const passwordInput = document.getElementById("password");
+    const loginBtn = document.getElementById("login-btn");
+    const registerBtn = document.getElementById("register-btn");
+    const authSection = document.getElementById("auth-section");
+    const statusSection = document.getElementById("status-section");
+    const userDisplay = document.getElementById("user-display");
+    const logoutBtn = document.getElementById("logout-btn");
+    const errorMsg = document.getElementById("error-msg");
 
-document.addEventListener("DOMContentLoaded", async () => {
-  const authView = document.getElementById("auth-view");
-  const trackView = document.getElementById("track-view");
-  const loginBtn = document.getElementById("login-btn");
-  const logoutBtn = document.getElementById("logout-btn");
-  const toggleBtn = document.getElementById("toggle-record");
-  const statusContainer = document.getElementById("status-container");
-  const statusText = document.getElementById("status-text");
-  const errorMsg = document.getElementById("login-error");
-
-  const groupMouse = document.getElementById("group-mouse");
-  const groupScroll = document.getElementById("group-scroll");
-  const groupEye = document.getElementById("group-eye");
-
-  const calibrateBtn = document.getElementById("calibrate-btn");
-  if (calibrateBtn) {
-    calibrateBtn.addEventListener("click", () => {
-      chrome.tabs.create({ url: chrome.runtime.getURL("calibration.html") });
-    });
-  }
-
-  // Check login state
-  chrome.storage.local.get(["userId", "isRecording", "trackingSettings"], (data) => {
-    if (data.userId) {
-      authView.style.display = "none";
-      trackView.style.display = "block";
-    }
-
-    if (data.isRecording) {
-      setRecordingState(true);
-    }
-
-    if (data.trackingSettings) {
-      document.getElementById("track-mouse").checked = data.trackingSettings.mouse;
-      document.getElementById("track-scroll").checked = data.trackingSettings.scroll;
-      document.getElementById("track-eye").checked = data.trackingSettings.eye;
-    }
-  });
-
-  function setRecordingState(isRecording) {
-    if (isRecording) {
-      toggleBtn.textContent = "Stop Recording";
-      toggleBtn.className = "danger";
-      statusContainer.classList.add("recording");
-      statusText.textContent = "Recording Active";
-
-      // Disable toggles while recording
-      document.getElementById("track-mouse").disabled = true;
-      document.getElementById("track-scroll").disabled = true;
-      document.getElementById("track-eye").disabled = true;
-
-      groupMouse.classList.add("disabled");
-      groupScroll.classList.add("disabled");
-      groupEye.classList.add("disabled");
-    } else {
-      toggleBtn.textContent = "Start Recording";
-      toggleBtn.className = "primary";
-      statusContainer.classList.remove("recording");
-      statusText.textContent = "Ready to Record";
-
-      // Enable toggles
-      document.getElementById("track-mouse").disabled = false;
-      document.getElementById("track-scroll").disabled = false;
-      document.getElementById("track-eye").disabled = false;
-
-      groupMouse.classList.remove("disabled");
-      groupScroll.classList.remove("disabled");
-      groupEye.classList.remove("disabled");
-    }
-  }
-
-  loginBtn.addEventListener("click", async () => {
-    const email = document.getElementById("email").value;
-    const password = document.getElementById("password").value;
-    const role = document.getElementById("role").value;
-
-    if (!email || !password) {
-      errorMsg.textContent = "Please enter email and password";
-      errorMsg.style.display = "block";
-      return;
-    }
-
-    const originalText = loginBtn.textContent;
-    loginBtn.textContent = "Connecting...";
-    loginBtn.style.opacity = "0.7";
-    loginBtn.disabled = true;
-    errorMsg.style.display = "none";
-
-    try {
-      const res = await fetch(`${API_BASE}/auth/login`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password, role })
-      });
-      const json = await res.json();
-
-      if (json.user && json.user.id) {
-        chrome.storage.local.set({ userId: json.user.id }, () => {
-          authView.style.opacity = "0";
-          setTimeout(() => {
-            authView.style.display = "none";
-            trackView.style.display = "block";
-            trackView.style.opacity = "0";
-            setTimeout(() => {
-              trackView.style.transition = "opacity 0.3s ease";
-              trackView.style.opacity = "1";
-            }, 50);
-          }, 200);
-        });
-      } else {
-        errorMsg.textContent = json.error || "Login failed";
+    function showError(msg) {
+        errorMsg.innerText = msg;
         errorMsg.style.display = "block";
-      }
-    } catch (e) {
-      errorMsg.textContent = "Error connecting to server.";
-      errorMsg.style.display = "block";
-    } finally {
-      loginBtn.textContent = originalText;
-      loginBtn.style.opacity = "1";
-      loginBtn.disabled = false;
     }
-  });
 
-  logoutBtn.addEventListener("click", () => {
-    chrome.storage.local.remove(["userId", "isRecording", "sessionId"], () => {
-      trackView.style.opacity = "0";
-      setTimeout(() => {
-        trackView.style.display = "none";
-        authView.style.display = "block";
-        authView.style.opacity = "0";
-        setTimeout(() => {
-          authView.style.transition = "opacity 0.3s ease";
-          authView.style.opacity = "1";
-        }, 50);
-
-        // reset fields
-        document.getElementById("password").value = "";
+    function clearError() {
+        errorMsg.innerText = "";
         errorMsg.style.display = "none";
-      }, 200);
+    }
 
-      // Tell background to stop recording
-      chrome.runtime.sendMessage({ action: "STOP_RECORDING" });
-      setRecordingState(false);
-    });
-  });
-
-  toggleBtn.addEventListener("click", () => {
-    chrome.storage.local.get(["isRecording"], (data) => {
-      const willRecord = !data.isRecording;
-
-      const trackingSettings = {
-        mouse: document.getElementById("track-mouse").checked,
-        scroll: document.getElementById("track-scroll").checked,
-        eye: document.getElementById("track-eye").checked,
-      };
-
-      chrome.storage.local.set({
-        isRecording: willRecord,
-        trackingSettings
-      }, () => {
-        setRecordingState(willRecord);
-        if (willRecord) {
-          chrome.runtime.sendMessage({ action: "START_RECORDING", settings: trackingSettings });
+    const checkAuth = async () => {
+        const data = await chrome.storage.local.get(["user", "token"]);
+        if (data.user && data.token) {
+            authSection.style.display = "none";
+            statusSection.style.display = "block";
+            initSettings();
         } else {
-          chrome.runtime.sendMessage({ action: "STOP_RECORDING" });
+            authSection.style.display = "block";
+            statusSection.style.display = "none";
         }
-      });
-    });
-  });
+    };
 
-  // Save toggle states when they change
-  ["track-mouse", "track-scroll", "track-eye"].forEach(id => {
-    document.getElementById(id).addEventListener("change", () => {
-      const trackingSettings = {
-        mouse: document.getElementById("track-mouse").checked,
-        scroll: document.getElementById("track-scroll").checked,
-        eye: document.getElementById("track-eye").checked,
-      };
-      chrome.storage.local.set({ trackingSettings });
+    const recordBtn = document.getElementById("record-btn");
+    const badge = document.getElementById("recording-badge");
+    const badgeText = document.getElementById("recording-text");
+    const badgeDot = document.getElementById("recording-dot");
+    const toggles = {
+        mouse: document.getElementById("toggle-mouse"),
+        scroll: document.getElementById("toggle-scroll"),
+        eye: document.getElementById("toggle-eye")
+    };
+    let isRecording = false;
+
+    async function initSettings() {
+        const data = await chrome.storage.local.get(["settings", "isRecording"]);
+        const settings = data.settings || { mouse: true, scroll: true, eye: true };
+        toggles.mouse.checked = settings.mouse;
+        toggles.scroll.checked = settings.scroll;
+        toggles.eye.checked = settings.eye;
+        isRecording = !!data.isRecording;
+        updateRecordingUI();
+    }
+
+    function updateRecordingUI() {
+        if (isRecording) {
+            recordBtn.innerText = "Stop Recording";
+            recordBtn.style.background = "#ef4444"; // red
+            badgeText.innerText = "Recording...";
+            badgeText.style.color = "#ef4444";
+            badgeDot.style.background = "#ef4444";
+            badge.style.borderColor = "rgba(239, 68, 68, 0.3)";
+        } else {
+            recordBtn.innerText = "Start Recording";
+            recordBtn.style.background = "#3b82f6"; // blue
+            badgeText.innerText = "Ready to Record";
+            badgeText.style.color = "#10b981";
+            badgeDot.style.background = "#10b981";
+            badge.style.borderColor = "#334155";
+        }
+    }
+
+    // Save toggle config changes instantly
+    async function saveSettings() {
+        const settings = {
+            mouse: toggles.mouse.checked,
+            scroll: toggles.scroll.checked,
+            eye: toggles.eye.checked
+        };
+        await chrome.storage.local.set({ settings });
+    }
+
+    toggles.mouse.addEventListener("change", saveSettings);
+    toggles.scroll.addEventListener("change", saveSettings);
+    toggles.eye.addEventListener("change", saveSettings);
+
+    recordBtn.addEventListener("click", async () => {
+        isRecording = !isRecording;
+        await chrome.storage.local.set({ isRecording });
+        updateRecordingUI();
+        if (isRecording) {
+            // Signal background to prep an empty session buffer if needed
+            chrome.runtime.sendMessage({ type: "START_TRACKING" });
+        } else {
+            chrome.runtime.sendMessage({ type: "STOP_TRACKING" });
+        }
     });
-  });
+
+    async function authenticate(endpoint, btn) {
+        clearError();
+        const email = emailInput.value;
+        const password = passwordInput.value;
+        if (!email || !password) {
+            showError("Email and password needed.");
+            return;
+        }
+
+        const oldText = btn.innerText;
+        btn.innerText = "Loading...";
+        btn.disabled = true;
+
+        try {
+            const res = await fetch(`http://localhost:3001/auth/${endpoint}`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ email, password })
+            });
+
+            // Handle HTTP 401 Unauthorized exceptions manually here
+            if (res.status === 401) {
+                showError("Invalid credentials.");
+                return;
+            }
+
+            const result = await res.json();
+            if (result.token) {
+                await chrome.storage.local.set({ user: result.user, token: result.token });
+                checkAuth();
+            } else {
+                showError(endpoint === 'login' ? "Login failed: " + result.message : "Registration failed: " + result.message);
+            }
+        } catch (err) {
+            console.error(err);
+            showError("Backend is offline. Must run NestJS server.");
+        } finally {
+            btn.innerText = oldText;
+            btn.disabled = false;
+        }
+    }
+
+    loginBtn.addEventListener("click", () => authenticate("login", loginBtn));
+    registerBtn.addEventListener("click", () => authenticate("register", registerBtn));
+
+    logoutBtn.addEventListener("click", async () => {
+        // Send session stop to backend securely
+        const data = await chrome.storage.local.get(["sessionId", "token"]);
+        if (data.sessionId && data.token) {
+            try {
+                await fetch("http://localhost:3001/track/session/end", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "Authorization": `Bearer ${data.token}`
+                    },
+                    body: JSON.stringify({ sessionId: data.sessionId })
+                });
+            } catch (e) { }
+            await chrome.storage.local.remove("sessionId");
+        }
+        await chrome.storage.local.remove(["user", "token"]);
+        checkAuth();
+    });
+
+    checkAuth();
 });
